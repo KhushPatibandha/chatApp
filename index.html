@@ -17,10 +17,12 @@
   </head>
   <body>
     <ul id="messages"></ul>
+
     <form id="form" action="">
-      <input id="name" placeholder="Your name" /><button>Set</button>
+      <input id="name" placeholder="Your name" /><button id="set-username">Set</button>
       <input id="input" autocomplete="off" /><button>Send</button>
     </form>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         var socket = io();
@@ -30,17 +32,62 @@
         var input = document.getElementById('input');
         var nameInput = document.getElementById('name');
 
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          return false; // Added to prevent page reload
+        });
+
+        var _username = localStorage.getItem("username") ?? null;
+
+        
+        if(_username){
+          socket.emit("someone-connected", _username);
+
+
+          document.getElementById("set-username").style.display = 'none'
+          document.getElementById("name").style.display = 'none'
+          socket.emit("set-username", localStorage.getItem("username"));
+
+          var item = document.createElement('li');
+          item.textContent = "You connected to the lobby";
+          messages.appendChild(item);
+          window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        document.getElementById("set-username").addEventListener("click", (event) => {
+        event.preventDefault();
+
+        var item = document.createElement('li');
+        item.textContent = "You connected to the lobby";
+        messages.appendChild(item);
+        window.scrollTo(0, document.body.scrollHeight);
+
+        _username = nameInput.value;
+        socket.emit("set-username", nameInput.value);
+        document.getElementById("set-username").style.display = 'none'
+        document.getElementById("name").style.display = 'none'
+        localStorage.setItem("username", nameInput.value);
+        socket.emit("someone-connected", _username);
+
+        return false; // Added to prevent page reload
+      });
+
+      socket.on("someone-connected-msg", (username) => {
+        var item = document.createElement('li');
+          item.textContent = `${username} connected to the lobby`;
+          messages.appendChild(item);
+          window.scrollTo(0, document.body.scrollHeight);
+      })
         // this one works
         form.addEventListener('submit', function(e) {
             e.preventDefault();
-            if(nameInput.value && !(input.value)) {
-              socket.emit('chat message', (nameInput.value)+ " has connected to the lobby")
-            }
 
-            if(input.value && nameInput.value) {
-              socket.emit('chat message', (nameInput.value)+ ": " +(input.value));
-              input.value = '';
-            }
+            var item = document.createElement('li');
+            item.textContent = `You: ${input.value}`;
+            messages.appendChild(item);
+            window.scrollTo(0, document.body.scrollHeight);
+
+            socket.emit('chat message', `${localStorage.getItem("username")}: ${input.value}`);
         });
 
         socket.on('chat message', function(msg) {
@@ -49,6 +96,7 @@
             messages.appendChild(item);
             window.scrollTo(0, document.body.scrollHeight);
         });
+
     </script>
   </body>
 </html>
